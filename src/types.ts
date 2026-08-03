@@ -20,9 +20,11 @@ export interface StaffApplication {
   adminNotes: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  authToken?: string;
 }
 
 export interface UserSession {
   discordUsername: string;
   isAdmin: boolean;
+  token: string;
 }

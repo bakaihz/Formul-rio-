@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StaffApplication, UserSession } from '../types';
 import { STAFF_QUESTIONS } from '../data/questions';
+import { submitFormToComplete } from '../services/api';
 import {
   Send,
   ChevronRight,
@@ -11,6 +12,7 @@ import {
   List,
   Layers,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface QuestionnaireFormProps {
@@ -31,6 +33,7 @@ export const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({
   );
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const effectiveUsername = currentUser?.discordUsername || discordNickInput.trim();
 
@@ -68,7 +71,7 @@ export const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFinalSubmit = (e: React.FormEvent) => {
+  const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -80,18 +83,22 @@ export const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({
     }
 
     const ageNum = parseInt(answers[1] || '16', 10);
+    setIsSubmitting(true);
 
-    const newApp: StaffApplication = {
-      id: `astral-${Math.floor(1000 + Math.random() * 9000)}`,
-      discordUsername: effectiveUsername,
-      age: isNaN(ageNum) ? 16 : ageNum,
-      submittedAt: new Date().toISOString(),
-      status: 'Pendente',
-      answers,
-      adminNotes: '',
-    };
+    try {
+      const result = await submitFormToComplete({
+        discordUsername: effectiveUsername,
+        age: isNaN(ageNum) ? 16 : ageNum,
+        answers,
+        authToken: currentUser?.token,
+      });
 
-    onSubmitSuccess(newApp);
+      onSubmitSuccess(result.application);
+    } catch (err) {
+      console.error('Erro no envio do formulário:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const currentQ = STAFF_QUESTIONS[currentStep];
@@ -333,10 +340,15 @@ export const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({
                   <button
                     type="button"
                     onClick={handleFinalSubmit}
-                    className="flex items-center space-x-2 rounded-xl bg-red-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-red-500 transition shadow-sm"
+                    disabled={isSubmitting}
+                    className="flex items-center space-x-2 rounded-xl bg-red-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-red-500 transition shadow-sm disabled:opacity-50"
                   >
-                    <Send className="h-3.5 w-3.5" />
-                    <span>Enviar Formulário</span>
+                    {isSubmitting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                    <span>{isSubmitting ? 'Enviando...' : 'Enviar Formulário'}</span>
                   </button>
                 )}
               </div>
@@ -410,10 +422,15 @@ export const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({
           <div className="pt-4 flex justify-end">
             <button
               type="submit"
-              className="flex items-center space-x-2 rounded-xl bg-red-600 px-6 py-3 text-xs font-bold text-white hover:bg-red-500 transition shadow-sm"
+              disabled={isSubmitting}
+              className="flex items-center space-x-2 rounded-xl bg-red-600 px-6 py-3 text-xs font-bold text-white hover:bg-red-500 transition shadow-sm disabled:opacity-50"
             >
-              <Send className="h-4 w-4" />
-              <span>Enviar Formulário Astral</span>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              <span>{isSubmitting ? 'Enviando ao servidor...' : 'Enviar Formulário Astral'}</span>
             </button>
           </div>
         </form>

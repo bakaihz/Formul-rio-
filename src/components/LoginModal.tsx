@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserSession } from '../types';
-import { User, Shield, CheckCircle2, X, Lock } from 'lucide-react';
+import { requestAuthToken } from '../services/api';
+import { User, Shield, CheckCircle2, X, Lock, Key } from 'lucide-react';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -11,12 +12,13 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => {
   const [inputUsername, setInputUsername] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [showStaffAccess, setShowStaffAccess] = useState(false);
   const [staffPass, setStaffPass] = useState('');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = inputUsername.trim();
     if (!cleaned) {
@@ -24,25 +26,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
       return;
     }
 
-    const isAdmin = cleaned.toLowerCase() === 'bakai_shuziro978';
-    onLogin({
-      discordUsername: cleaned,
-      isAdmin,
-    });
-    onClose();
+    setIsLoading(true);
+    try {
+      const session = await requestAuthToken(cleaned);
+      onLogin(session);
+      onClose();
+    } catch {
+      setError('Erro ao gerar token de autenticação.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleStaffLoginSubmit = (e: React.FormEvent) => {
+  const handleStaffLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = staffPass.trim();
     if (!val) return;
 
     if (val.toLowerCase() === 'bakai_shuziro978' || val.toLowerCase() === 'staff' || val.toLowerCase() === 'admin') {
-      onLogin({
-        discordUsername: val.toLowerCase() === 'bakai_shuziro978' ? 'bakai_shuziro978' : val,
-        isAdmin: true,
-      });
-      onClose();
+      setIsLoading(true);
+      try {
+        const nick = val.toLowerCase() === 'bakai_shuziro978' ? 'bakai_shuziro978' : val;
+        const session = await requestAuthToken(nick);
+        onLogin({
+          ...session,
+          isAdmin: true,
+        });
+        onClose();
+      } catch {
+        setError('Erro ao autenticar chave da Staff.');
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setError('Credencial de Staff não reconhecida.');
     }

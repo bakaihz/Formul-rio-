@@ -6,6 +6,11 @@ import {
   getStoredUser,
   saveUser,
 } from './utils/helpers';
+import {
+  fetchAllApplications,
+  updateApplicationOnServer,
+  deleteApplicationOnServer,
+} from './services/api';
 import { Navbar } from './components/Navbar';
 import { LoginModal } from './components/LoginModal';
 import { QuestionnaireForm } from './components/QuestionnaireForm';
@@ -28,6 +33,29 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Fetch latest applications from /complete route on mount & when view changes to dashboard
+  const loadServerApplications = async () => {
+    try {
+      const serverApps = await fetchAllApplications();
+      if (serverApps && serverApps.length > 0) {
+        setApplications(serverApps);
+        saveApplications(serverApps);
+      }
+    } catch (err) {
+      console.warn('Usando dados em cache local:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadServerApplications();
+  }, []);
+
+  useEffect(() => {
+    if (activeView === 'dashboard') {
+      loadServerApplications();
+    }
+  }, [activeView]);
 
   // Sync state changes to LocalStorage
   useEffect(() => {
@@ -53,23 +81,30 @@ export default function App() {
   };
 
   const handleFormSubmitSuccess = (newApp: StaffApplication) => {
-    setApplications((prev) => [newApp, ...prev]);
+    setApplications((prev) => [newApp, ...prev.filter((a) => a.id !== newApp.id)]);
     setLatestSubmittedApp(newApp);
     setActiveView('success');
-    showToast(`Formulário enviado com sucesso!`);
+    showToast(`Formulário entregue no servidor /complete!`);
   };
 
-  const handleUpdateApplication = (updatedApp: StaffApplication) => {
+  const handleUpdateApplication = async (updatedApp: StaffApplication) => {
     setApplications((prev) =>
       prev.map((app) => (app.id === updatedApp.id ? updatedApp : app))
     );
     showToast(`Candidatura de @${updatedApp.discordUsername} atualizada!`);
+    await updateApplicationOnServer(
+      updatedApp.id,
+      updatedApp.status,
+      updatedApp.adminNotes,
+      updatedApp.reviewedBy
+    );
   };
 
-  const handleDeleteApplication = (id: string) => {
+  const handleDeleteApplication = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta candidatura?')) {
       setApplications((prev) => prev.filter((app) => app.id !== id));
       showToast('Candidatura removida.');
+      await deleteApplicationOnServer(id);
     }
   };
 
