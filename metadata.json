@@ -1,0 +1,6 @@
+{
+  "name": "Formulário Astral",
+  "description": "Formulário de candidatura para Staff de Discord com painel de avaliação para bakai_shuziro978.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
